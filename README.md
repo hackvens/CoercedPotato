@@ -63,6 +63,13 @@ Options:
   -f,--force BOOLEAN          Force all RPC functions even if it says 'Exploit worked!' (Default value : false)
   --interactive BOOLEAN       Set wether the process should be run within the same shell or open a new window. (Default value : true)
 ```
+## Known issues
+
+Some compilations issues can occur due to the error handling implementation, in this case you can choose an older version with the following git command:
+
+```
+git reset --hard 5e91aec
+```
 
 
 Made in France 🇫🇷 with <3
